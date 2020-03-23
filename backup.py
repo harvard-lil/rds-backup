@@ -28,7 +28,7 @@ import requests
 @click.option('--healthcheck',
               help='URL to ping for healthcheck')
 def backup(instance, database, sg, billto, profile, snapshot, fix_perms,
-           strip_passwords, sync_and_delete):
+           strip_passwords, sync_and_delete, healthcheck):
     """
     Run like this:
 
