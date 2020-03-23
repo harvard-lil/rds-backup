@@ -1,0 +1,7 @@
+pip-tools
+flake8
+
+click
+boto3
+psycopg2
+requests
