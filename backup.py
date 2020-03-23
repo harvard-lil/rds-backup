@@ -10,9 +10,9 @@ import requests
 
 
 @click.command()
-@click.argument('instance', help='AWS database instance')
-@click.argument('database', help='Database name')
-@click.argument('sg', help='AWS security group')
+@click.argument('instance')
+@click.argument('database')
+@click.argument('sg')
 @click.option('--billto', default='lil',
               help='Value of "Billable To" tag')
 @click.option('--profile', default='default',
@@ -30,7 +30,9 @@ import requests
 def backup(instance, database, sg, billto, profile, snapshot, fix_perms,
            strip_passwords, sync_and_delete):
     """
-    Docstring here.
+    Run like this:
+
+    python backup.py <RDS instance> <database> <security group>
     """
     backup_time = datetime.now()
     timestamp = backup_time.strftime('%Y%m%d%H%M%S')
