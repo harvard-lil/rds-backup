@@ -193,9 +193,10 @@ def backup(instance, database, sg, billto, profile, snapshot, fix_perms,
     # on success, sync and delete if necessary
     if returncode == 0:
         if sync_and_delete:
+            dest = f'{sync_and_delete}:/srv/backup/db/{instance}/'
             returncode = subprocess.call(['scp',
                                           dumpfile,
-                                          f'{sync_and_delete}'])
+                                          dest])
     else:
         print(f'Dump failed.')
         if sync_and_delete:
