@@ -6,6 +6,7 @@ import stat
 import errno
 import subprocess
 import psycopg2
+from passlib.hash import pbkdf2_sha256
 import requests
 
 
@@ -23,12 +24,14 @@ import requests
               help='Handle permissions problem for the CAP API')
 @click.option('--strip-passwords/--no-strip-passwords', default=False,
               help='Overwrite passwords, emit zipped SQL dump; PG only')
+@click.option('--password', default='changeme',
+              help='Replacement "password" for --strip-passwords')
 @click.option('--sync-and-delete',
               help='Remote server to sync backup to; delete backup on success')
 @click.option('--healthcheck',
               help='URL to ping for healthcheck')
 def backup(instance, database, sg, billto, profile, snapshot, fix_perms,
-           strip_passwords, sync_and_delete, healthcheck):
+           strip_passwords, password, sync_and_delete, healthcheck):
     """
     This program makes a backup of an RDS instance from a snapshot.
 
@@ -161,10 +164,14 @@ def backup(instance, database, sg, billto, profile, snapshot, fix_perms,
             conn.close()
         # for devs, we don't want password hashes
         if strip_passwords:
+            # customized to match previous hash
+            custom_pbkdf2 = pbkdf2_sha256.using(rounds=150000)
+            hash = custom_pbkdf2.hash(password)
             c = f'passfile={pgpass} dbname={database} user={user} host={host}'
             conn = psycopg2.connect(c)
             cur = conn.cursor()
-            cur.execute("update users set password='pbkdf2_sha256$150000$BuWRnNWV94Tj$281UbOQleCUCi6/Bb1i+NpmlZ0/ptqwtvycVaegFZiY=';")  # noqa
+            # strip $ from front of hash
+            cur.execute(f"update users set password='{hash[1:]}';")
             conn.commit()
             cur.close()
             conn.close()
@@ -210,12 +217,12 @@ def backup(instance, database, sg, billto, profile, snapshot, fix_perms,
         response6 = client.delete_db_snapshot(  # noqa
             DBSnapshotIdentifier=snapshot_id)
 
-    print('Done.')
-
     if returncode == 0 and healthcheck:
         r = requests.get(healthcheck)
         if r.status_code != requests.codes.ok:
             print('Backup successful, but could not ping healthcheck.')
+
+    print('Done.')
 
 
 if __name__ == '__main__':

@@ -15,6 +15,7 @@ flake8==3.7.9             # via -r requirements.in
 idna==2.9                 # via requests
 jmespath==0.9.5           # via boto3, botocore
 mccabe==0.6.1             # via flake8
+passlib==1.7.2            # via -r requirements.in
 pip-tools==4.5.1          # via -r requirements.in
 psycopg2==2.8.4           # via -r requirements.in
 pycodestyle==2.5.0        # via flake8
