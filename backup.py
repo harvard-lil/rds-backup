@@ -122,12 +122,13 @@ def backup(instance, database, sg, billto, profile, snapshot, fix_perms,
     flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
     mode = stat.S_IRUSR | stat.S_IWUSR
 
+    base = f'{db_instance}-{source}'
+
     print('Dumping database...')
     if engine == 'mysql':
         mycnf = os.path.join(os.getcwd(), f'.{instance}.my.cnf')
         print(f'Using {mycnf}')
-        filename = f'{db_instance}-{source}.sql.xz'
-        dumpfile = os.path.join(os.getcwd(), instance, filename)
+        dumpfile = os.path.join(os.getcwd(), instance, f'{base}.sql.xz')
         # https://stackoverflow.com/a/15015748/4074877
         with os.fdopen(os.open(dumpfile, flags, mode), 'w') as f:
             dump = subprocess.Popen(['mysqldump',
@@ -154,10 +155,8 @@ def backup(instance, database, sg, billto, profile, snapshot, fix_perms,
         pgpass = os.path.join(os.getcwd(), f'.{instance}.pgpass')
         print(f'Using {pgpass}')
         if strip_passwords:
-            filename = f'{db_instance}-{source}-SAFE.dump'
-        else:
-            filename = f'{db_instance}-{source}.dump'
-        dumpfile = os.path.join(os.getcwd(), instance, filename)
+            base = f'{base}-SAFE'
+        dumpfile = os.path.join(os.getcwd(), instance, f'{base}.dump')
         fd = os.open(dumpfile, flags, mode)
         os.close(fd)
         # in some cases (capstone) the master user does not have permissions
