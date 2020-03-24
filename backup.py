@@ -5,6 +5,7 @@ import os
 import stat
 import errno
 import subprocess
+import time
 import psycopg2
 from passlib.hash import pbkdf2_sha256
 import requests
@@ -28,10 +29,12 @@ import requests
               help='Replacement "password" for --strip-passwords')
 @click.option('--sync-and-delete',
               help='Remote server to sync backup to; delete backup on success')
+@click.option('--sleep', default=120,
+              help='Seconds to sleep after modifying instance')
 @click.option('--healthcheck',
               help='URL to ping for healthcheck')
 def backup(instance, database, sg, billto, profile, snapshot, fix_perms,
-           strip_passwords, password, sync_and_delete, healthcheck):
+           strip_passwords, password, sync_and_delete, sleep, healthcheck):
     """
     This program makes a backup of an RDS instance from a snapshot.
 
@@ -99,6 +102,11 @@ def backup(instance, database, sg, billto, profile, snapshot, fix_perms,
     client.modify_db_instance(
         DBInstanceIdentifier=db_instance,
         VpcSecurityGroupIds=[sg])
+
+    # in some cases, the instance is not reachable immediately
+    if sleep:
+        print(f'Sleeping for {sleep} seconds')
+        time.sleep(sleep)
 
     try:
         os.makedirs(os.path.join(os.getcwd(), instance))
