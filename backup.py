@@ -30,6 +30,8 @@ import requests
 def backup(instance, database, sg, billto, profile, snapshot, fix_perms,
            strip_passwords, sync_and_delete, healthcheck):
     """
+    This program makes a backup of an RDS instance from a snapshot.
+
     Run like this:
 
     python backup.py <RDS instance> <database> <security group>
@@ -40,18 +42,16 @@ def backup(instance, database, sg, billto, profile, snapshot, fix_perms,
     session = boto3.Session(profile_name=profile)
     client = session.client('rds')
 
+    tags = [{'Key': 'Billable To',
+             'Value': billto}]
+
     if snapshot:
         snapshot_id = f'dbb-{instance}-{timestamp}'
         print(f'Creating snapshot {snapshot_id}...')
         response = client.create_db_snapshot(
             DBSnapshotIdentifier=snapshot_id,
             DBInstanceIdentifier=instance,
-            Tags=[
-                {
-                    'Key': 'Billable To',
-                    'Value': billto
-                }
-            ])
+            Tags=tags)
         latest = snapshot_id
         snaptime = backup_time
         waiter = client.get_waiter('db_snapshot_completed')
@@ -76,12 +76,7 @@ def backup(instance, database, sg, billto, profile, snapshot, fix_perms,
     response2 = client.restore_db_instance_from_db_snapshot(  # noqa
         DBInstanceIdentifier=db_instance,
         DBSnapshotIdentifier=latest,
-        Tags=[
-            {
-                'Key': 'Billable To',
-                'Value': billto
-            }
-        ],
+        Tags=tags,
         CopyTagsToSnapshot=True)
 
     # wait for db to become available
@@ -198,10 +193,9 @@ def backup(instance, database, sg, billto, profile, snapshot, fix_perms,
                                           dumpfile,
                                           dest])
     else:
-        print(f'Dump failed.')
+        print('Dump failed.')
         if sync_and_delete:
             print(f'*Not* deleting backup file {dumpfile}')
-        
 
     print(f'Deleting instance {db_instance}')
     response5 = client.delete_db_instance(  # noqa
