@@ -155,10 +155,15 @@ def backup(instance, database, sg, billto, profile, snapshot, fix_perms,
             c = f'passfile=/srv/backup/db/.pgpass dbname=capapi user=capstone host={host}'  # noqa
             conn = psycopg2.connect(c)
             cur = conn.cursor()
-            cur.execute("GRANT ALL ON SCHEMA capstone TO GROUP rds_superuser;")
-            cur.execute("GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA capstone TO GROUP rds_superuser;")  # noqa
-            cur.execute("GRANT USAGE ON SCHEMA capstone TO GROUP rds_superuser;")  # noqa
-            cur.execute("GRANT SELECT ON ALL SEQUENCES IN SCHEMA capstone TO GROUP rds_superuser;")  # noqa
+            schema_to_group = 'SCHEMA capstone TO GROUP rds_superuser'
+            privileges = [
+                'ALL ON',
+                'ALL PRIVILEGES ON ALL TABLES IN',
+                'USAGE ON',
+                'SELECT ON ALL SEQUENCES IN'
+            ]
+            for privilege in privileges:
+                cur.execute(f'GRANT {privilege} {schema_to_group};')
             conn.commit()
             cur.close()
             conn.close()
