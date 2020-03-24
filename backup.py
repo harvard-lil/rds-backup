@@ -153,8 +153,7 @@ def backup(instance, database, sg, billto, profile, snapshot, fix_perms,
         # issue the right permissions
         if fix_perms:
             c = f'passfile=/srv/backup/db/.pgpass dbname=capapi user=capstone host={host}'  # noqa
-            conn = psycopg2.connect(c)
-            cur = conn.cursor()
+            (conn, cur) = connect(c)
             schema_to_group = 'SCHEMA capstone TO GROUP rds_superuser'
             privileges = [
                 'ALL ON',
@@ -164,22 +163,17 @@ def backup(instance, database, sg, billto, profile, snapshot, fix_perms,
             ]
             for privilege in privileges:
                 cur.execute(f'GRANT {privilege} {schema_to_group};')
-            conn.commit()
-            cur.close()
-            conn.close()
+            disconnect(conn, cur)
         # for devs, we don't want password hashes
         if strip_passwords:
             # customized to match previous hash
             custom_pbkdf2 = pbkdf2_sha256.using(rounds=150000)
             hash = custom_pbkdf2.hash(password)
             c = f'passfile={pgpass} dbname={database} user={user} host={host}'
-            conn = psycopg2.connect(c)
-            cur = conn.cursor()
+            (conn, cur) = connect(c)
             # strip $ from front of hash
             cur.execute(f"update users set password='{hash[1:]}';")
-            conn.commit()
-            cur.close()
-            conn.close()
+            disconnect(conn, cur)
         # then we run pg_dump
         d = dict(os.environ)
         d['PGPASSFILE'] = pgpass
@@ -227,6 +221,20 @@ def backup(instance, database, sg, billto, profile, snapshot, fix_perms,
             print('Backup successful, but could not ping healthcheck.')
 
     print('Done.')
+
+
+def connect(c):
+    """ Connect to a PG database """
+    conn = psycopg2.connect(c)
+    cur = conn.cursor()
+    return (conn, cur)
+
+
+def disconnect(conn, cur):
+    """ Disconnect from a PG database """
+    conn.commit()
+    cur.close()
+    conn.close()
 
 
 if __name__ == '__main__':
