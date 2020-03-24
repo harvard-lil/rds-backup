@@ -112,14 +112,11 @@ def backup(instance, database, sg, billto, profile, snapshot, fix_perms,
 
     print('Dumping database...')
     if engine == 'mysql':
-        dumpfile = f'{db_instance}.sql.xz'
         mycnf = os.path.join(os.getcwd(), f'.{instance}.my.cnf')
+        print(f'Using {mycnf}')
+        dumpfile = os.path.join(os.getcwd(), instance, f'{db_instance}.sql.xz')
         # https://stackoverflow.com/a/15015748/4074877
-        with os.fdopen(os.open(os.path.join(os.getcwd(), instance, dumpfile),
-                               flags,
-                               mode),
-                       'w') as f:
-            print(f'Using {mycnf}')
+        with os.fdopen(os.open(dumpfile, flags, mode), 'w') as f:
             dump = subprocess.Popen(['mysqldump',
                                      f'--defaults-extra-file={mycnf}',
                                      '--single-transaction',
@@ -143,9 +140,7 @@ def backup(instance, database, sg, billto, profile, snapshot, fix_perms,
         # (psycopg2 does not have pg_dump functionality)
         pgpass = os.path.join(os.getcwd(), f'.{instance}.pgpass')
         print(f'Using {pgpass}')
-        dumpfile = os.path.join(os.getcwd(),
-                                instance,
-                                f'{db_instance}.dump')
+        dumpfile = os.path.join(os.getcwd(), instance, f'{db_instance}.dump')
         fd = os.open(dumpfile, flags, mode)
         os.close(fd)
         # in some cases (capstone) the master user does not have permissions
