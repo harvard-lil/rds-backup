@@ -1,4 +1,5 @@
 import click
+import socket
 import boto3
 from datetime import datetime
 import os
@@ -33,8 +34,11 @@ import requests
               help='Seconds to sleep after modifying instance')
 @click.option('--healthcheck',
               help='URL to ping for healthcheck')
+@click.option('--source', default=lambda: socket.gethostname(),
+              help='Label for identifying source of backup')
 def backup(instance, database, sg, billto, profile, snapshot, fix_perms,
-           strip_passwords, password, sync_and_delete, sleep, healthcheck):
+           strip_passwords, password, sync_and_delete, sleep, healthcheck,
+           source):
     """
     This program makes a backup of an RDS instance from a snapshot.
 
@@ -122,7 +126,8 @@ def backup(instance, database, sg, billto, profile, snapshot, fix_perms,
     if engine == 'mysql':
         mycnf = os.path.join(os.getcwd(), f'.{instance}.my.cnf')
         print(f'Using {mycnf}')
-        dumpfile = os.path.join(os.getcwd(), instance, f'{db_instance}.sql.xz')
+        filename = f'{db_instance}-{source}.sql.xz'
+        dumpfile = os.path.join(os.getcwd(), instance, filename)
         # https://stackoverflow.com/a/15015748/4074877
         with os.fdopen(os.open(dumpfile, flags, mode), 'w') as f:
             dump = subprocess.Popen(['mysqldump',
@@ -148,7 +153,11 @@ def backup(instance, database, sg, billto, profile, snapshot, fix_perms,
         # (psycopg2 does not have pg_dump functionality)
         pgpass = os.path.join(os.getcwd(), f'.{instance}.pgpass')
         print(f'Using {pgpass}')
-        dumpfile = os.path.join(os.getcwd(), instance, f'{db_instance}.dump')
+        if strip_passwords:
+            filename = f'{db_instance}-{source}-SAFE.dump'
+        else:
+            filename = f'{db_instance}-{source}.dump'
+        dumpfile = os.path.join(os.getcwd(), instance, filename)
         fd = os.open(dumpfile, flags, mode)
         os.close(fd)
         # in some cases (capstone) the master user does not have permissions
