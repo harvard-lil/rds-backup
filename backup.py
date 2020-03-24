@@ -51,7 +51,7 @@ def backup(instance, database, sg, billto, profile, snapshot, fix_perms,
     if snapshot:
         snapshot_id = f'dbb-{instance}-{timestamp}'
         print(f'Creating snapshot {snapshot_id}...')
-        response = client.create_db_snapshot(
+        client.create_db_snapshot(
             DBSnapshotIdentifier=snapshot_id,
             DBInstanceIdentifier=instance,
             Tags=tags)
@@ -62,11 +62,11 @@ def backup(instance, database, sg, billto, profile, snapshot, fix_perms,
         print('Snapshot created.')
     else:
         print('Identifying snapshots...')
-        response = client.describe_db_snapshots(
+        snapshots = client.describe_db_snapshots(
             DBInstanceIdentifier=instance,
             SnapshotType='automated')
         latest = max([s['DBSnapshotIdentifier']
-                      for s in response['DBSnapshots']
+                      for s in snapshots['DBSnapshots']
                       if s['DBSnapshotIdentifier']
                       .startswith(f'rds:{instance}')])
         print(f'Latest is {latest}')
@@ -76,7 +76,7 @@ def backup(instance, database, sg, billto, profile, snapshot, fix_perms,
     db_instance = f'{instance}-{timestamp}-fromsnap-{snap}'
 
     print(f'Restoring snapshot to instance {db_instance}')
-    response2 = client.restore_db_instance_from_db_snapshot(  # noqa
+    client.restore_db_instance_from_db_snapshot(
         DBInstanceIdentifier=db_instance,
         DBSnapshotIdentifier=latest,
         Tags=tags,
@@ -88,15 +88,15 @@ def backup(instance, database, sg, billto, profile, snapshot, fix_perms,
     waiter.wait(DBInstanceIdentifier=db_instance)
 
     print('Getting instance information...')
-    response3 = client.describe_db_instances(DBInstanceIdentifier=db_instance)
-    db = response3['DBInstances'][0]
+    instances = client.describe_db_instances(DBInstanceIdentifier=db_instance)
+    db = instances['DBInstances'][0]
     engine = db['Engine']
     host = db['Endpoint']['Address']
     port = db['Endpoint']['Port']
     user = db['MasterUsername']
 
     print(f'Modifying instance with security group {sg}')
-    response4 = client.modify_db_instance(  # noqa
+    client.modify_db_instance(
         DBInstanceIdentifier=db_instance,
         VpcSecurityGroupIds=[sg])
 
@@ -132,10 +132,10 @@ def backup(instance, database, sg, billto, profile, snapshot, fix_perms,
                                      '-P',
                                      str(port)],
                                     stdout=subprocess.PIPE)
-            compress = subprocess.call(['xz',  # noqa
-                                        '--stdout',
-                                        '-'],
-                                       stdin=dump.stdout, stdout=f)
+            subprocess.call(['xz',
+                             '--stdout',
+                             '-'],
+                            stdin=dump.stdout, stdout=f)
             returncode = dump.wait()
     elif engine == 'postgres':
         # .pgpass in this directory must be set to 0600
@@ -210,7 +210,7 @@ def backup(instance, database, sg, billto, profile, snapshot, fix_perms,
             print(f'*Not* deleting backup file {dumpfile}')
 
     print(f'Deleting instance {db_instance}')
-    response5 = client.delete_db_instance(  # noqa
+    client.delete_db_instance(
         DBInstanceIdentifier=db_instance,
         SkipFinalSnapshot=True
     )
@@ -219,8 +219,7 @@ def backup(instance, database, sg, billto, profile, snapshot, fix_perms,
     # produces another snapshot we might want to delete
     if snapshot:
         print('Deleting snapshot...')
-        response6 = client.delete_db_snapshot(  # noqa
-            DBSnapshotIdentifier=snapshot_id)
+        client.delete_db_snapshot(DBSnapshotIdentifier=snapshot_id)
 
     if returncode == 0 and healthcheck:
         r = requests.get(healthcheck)
