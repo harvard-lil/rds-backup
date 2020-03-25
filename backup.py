@@ -205,10 +205,18 @@ def backup(instance, database, sg, billto, profile, snapshot, fix_perms,
     # on success, sync and delete if necessary
     if returncode == 0:
         if sync_and_delete:
+            print(f'Syncing backup file to {sync_and_delete}...')
             dest = f'{sync_and_delete}:/srv/backup/db/{instance}/'
-            returncode = subprocess.call(['rsync', dumpfile, dest])
+            returncode = subprocess.call([
+                'rsync', '--partial', dumpfile, dest
+            ])
+            # retry once if necessary
+            if returncode != 0:
+                returncode = subprocess.call([
+                    'rsync', '--append-verify', dumpfile, dest
+                ])
             if returncode == 0:
-                print(f'Deleting backup file {dumpfile}')
+                print(f'Done; deleting backup file {dumpfile}')
                 os.remove(dumpfile)
             else:
                 print(f'Sync failed, *not* deleting backup file {dumpfile}')
