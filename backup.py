@@ -42,9 +42,8 @@ def backup(instance, database, sg, billto, profile, snapshot, fix_perms,
     """
     This program makes a backup of an RDS instance from a snapshot.
 
-    Run like this:
-
-    python backup.py <RDS instance> <database> <security group>
+    The arguments are the database instance to back up, the name of the
+    database, and a security group that allows access from this machine.
     """
     backup_time = datetime.now()
     timestamp = backup_time.strftime('%Y%m%d%H%M%S')
