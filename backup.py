@@ -212,6 +212,7 @@ def backup(instance, database, sg, billto, profile, snapshot, fix_perms,
             ])
             # retry once if necessary
             if returncode != 0:
+                print('First sync failed, resuming...')
                 returncode = subprocess.call([
                     'rsync', '--append-verify', dumpfile, dest
                 ])
