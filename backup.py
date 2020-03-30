@@ -10,6 +10,7 @@ import time
 import psycopg2
 from passlib.hash import pbkdf2_sha256
 import requests
+from pathlib import Path
 
 
 @click.command()
@@ -111,12 +112,8 @@ def backup(instance, database, sg, billto, profile, snapshot, fix_perms,
         print(f'Sleeping for {sleep} seconds')
         time.sleep(sleep)
 
-    try:
-        os.makedirs(os.path.join(os.getcwd(), instance))
-        print(f'Created directory {instance}')
-    except OSError as e:
-        if e.errno != errno.EEXIST:
-            raise
+    cwd = Path.cwd() / instance
+    cwd.mkdir(exist_ok=True)
 
     flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
     mode = stat.S_IRUSR | stat.S_IWUSR
@@ -125,11 +122,11 @@ def backup(instance, database, sg, billto, profile, snapshot, fix_perms,
 
     print('Dumping database...')
     if engine == 'mysql':
-        mycnf = os.path.join(os.getcwd(), f'.{instance}.my.cnf')
+        mycnf = Path.cwd() / f'.{instance}.my.cnf'
         print(f'Using {mycnf}')
-        dumpfile = os.path.join(os.getcwd(), instance, f'{base}.sql.xz')
+        dumpfile = cwd / f'{base}.sql.xz'
         # https://stackoverflow.com/a/15015748/4074877
-        with os.fdopen(os.open(dumpfile, flags, mode), 'w') as f:
+        with open(os.open(dumpfile, flags, mode), 'w') as f:
             dump = subprocess.Popen(['mysqldump',
                                      f'--defaults-extra-file={mycnf}',
                                      '--single-transaction',
@@ -151,11 +148,11 @@ def backup(instance, database, sg, billto, profile, snapshot, fix_perms,
         # .pgpass in this directory must be set to 0600
         # the host entry for each possibility must be *
         # (psycopg2 does not have pg_dump functionality)
-        pgpass = os.path.join(os.getcwd(), f'.{instance}.pgpass')
+        pgpass = Path.cwd() / f'.{instance}.pgpass'
         print(f'Using {pgpass}')
         if strip_passwords:
             base = f'{base}-SAFE'
-        dumpfile = os.path.join(os.getcwd(), instance, f'{base}.dump')
+        dumpfile = cwd / f'{base}.dump'
         fd = os.open(dumpfile, flags, mode)
         os.close(fd)
         # in some cases (capstone) the master user does not have permissions
@@ -186,7 +183,7 @@ def backup(instance, database, sg, billto, profile, snapshot, fix_perms,
             disconnect(conn, cur)
         # then we run pg_dump
         d = dict(os.environ)
-        d['PGPASSFILE'] = pgpass
+        d['PGPASSFILE'] = str(pgpass)
         returncode = subprocess.call(['pg_dump',
                                       '-Fc',
                                       database,
@@ -198,7 +195,7 @@ def backup(instance, database, sg, billto, profile, snapshot, fix_perms,
                                       user,
                                       '-w',
                                       '-f',
-                                      dumpfile],
+                                      str(dumpfile)],
                                      env=d)
 
     # on success, sync and delete if necessary
@@ -207,17 +204,17 @@ def backup(instance, database, sg, billto, profile, snapshot, fix_perms,
             print(f'Syncing backup file to {sync_and_delete}...')
             dest = f'{sync_and_delete}:/srv/backup/db/{instance}/'
             returncode = subprocess.call([
-                'rsync', '--partial', dumpfile, dest
+                'rsync', '--partial', str(dumpfile), dest
             ])
             # retry once if necessary
             if returncode != 0:
                 print('First sync failed, resuming...')
                 returncode = subprocess.call([
-                    'rsync', '--append-verify', dumpfile, dest
+                    'rsync', '--append-verify', str(dumpfile), dest
                 ])
             if returncode == 0:
                 print(f'Done; deleting backup file {dumpfile}')
-                os.remove(dumpfile)
+                dumpfile.unlink()
             else:
                 print(f'Sync failed, *not* deleting backup file {dumpfile}')
     else:
