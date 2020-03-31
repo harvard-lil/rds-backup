@@ -254,7 +254,3 @@ def disconnect(conn, cur):
     conn.commit()
     cur.close()
     conn.close()
-
-
-if __name__ == '__main__':
-    backup()
