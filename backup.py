@@ -4,11 +4,9 @@ import boto3
 from datetime import datetime
 import os
 import stat
-import errno
 import subprocess
 import time
 import psycopg2
-from passlib.hash import pbkdf2_sha256
 import requests
 from pathlib import Path
 
@@ -27,8 +25,6 @@ from pathlib import Path
               help='Handle permissions problem for the CAP API')
 @click.option('--strip-passwords/--no-strip-passwords', default=False,
               help='Overwrite passwords, emit zipped SQL dump; PG only')
-@click.option('--password', default='changeme',
-              help='Replacement "password" for --strip-passwords')
 @click.option('--sync-and-delete',
               help='Remote server to sync backup to; delete backup on success')
 @click.option('--sleep', default=120,
@@ -38,8 +34,7 @@ from pathlib import Path
 @click.option('--source', default=lambda: socket.gethostname(),
               help='Label for identifying source of backup')
 def backup(instance, database, sg, billto, profile, snapshot, fix_perms,
-           strip_passwords, password, sync_and_delete, sleep, healthcheck,
-           source):
+           strip_passwords, sync_and_delete, sleep, healthcheck, source):
     """
     This program makes a backup of an RDS instance from a snapshot.
 
@@ -173,13 +168,9 @@ def backup(instance, database, sg, billto, profile, snapshot, fix_perms,
             disconnect(conn, cur)
         # for devs, we don't want password hashes - h2o only for now
         if strip_passwords:
-            # customized to match previous hash
-            custom_pbkdf2 = pbkdf2_sha256.using(rounds=150000)
-            hash = custom_pbkdf2.hash(password)
             c = f'passfile={pgpass} dbname={database} user={user} host={host}'
             (conn, cur) = connect(c)
-            # strip $ from front of hash
-            cur.execute(f"update main_user set password='{hash[1:]}';")
+            cur.execute(f"update main_user set password='pbkdf2_sha256$150000$wfDNGY2KLU8l$aNDSxDbmwyPXnBmKK4dwmfQuzYkyrkwhcKbBDTPZxbI=';")  # noqa
             disconnect(conn, cur)
         # then we run pg_dump
         d = dict(os.environ)
