@@ -171,7 +171,7 @@ def backup(instance, database, sg, billto, profile, snapshot, fix_perms,
             for privilege in privileges:
                 cur.execute(f'GRANT {privilege} {schema_to_group};')
             disconnect(conn, cur)
-        # for devs, we don't want password hashes
+        # for devs, we don't want password hashes - h2o only for now
         if strip_passwords:
             # customized to match previous hash
             custom_pbkdf2 = pbkdf2_sha256.using(rounds=150000)
@@ -179,7 +179,7 @@ def backup(instance, database, sg, billto, profile, snapshot, fix_perms,
             c = f'passfile={pgpass} dbname={database} user={user} host={host}'
             (conn, cur) = connect(c)
             # strip $ from front of hash
-            cur.execute(f"update users set password='{hash[1:]}';")
+            cur.execute(f"update main_user set password='{hash[1:]}';")
             disconnect(conn, cur)
         # then we run pg_dump
         d = dict(os.environ)
