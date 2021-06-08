@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='rds-backup',
-    version='0.1',
+    version='0.1.1',
     py_modules=['backup'],
     install_requires=[
         'Click',
