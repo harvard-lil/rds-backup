@@ -166,11 +166,15 @@ def backup(instance, database, sg, billto, profile, snapshot, fix_perms,
             for privilege in privileges:
                 cur.execute(f'GRANT {privilege} {schema_to_group};')
             disconnect(conn, cur)
-        # for devs, we don't want password hashes - h2o only for now
+        # for devs, we don't want password hashes - h2o and perma only for now
         if strip_passwords:
+            if 'h2o' in instance:
+                user_column = 'main_user'
+            elif 'perma' in instance:
+                user_column = 'perma_linkuser'
             c = f'passfile={pgpass} dbname={database} user={user} host={host}'
             (conn, cur) = connect(c)
-            cur.execute(f"update main_user set password='pbkdf2_sha256$150000$wfDNGY2KLU8l$aNDSxDbmwyPXnBmKK4dwmfQuzYkyrkwhcKbBDTPZxbI=';")  # noqa
+            cur.execute(f"update {user_column} set password='pbkdf2_sha256$150000$wfDNGY2KLU8l$aNDSxDbmwyPXnBmKK4dwmfQuzYkyrkwhcKbBDTPZxbI=';")  # noqa
             disconnect(conn, cur)
         # then we run pg_dump
         d = dict(os.environ)
