@@ -2,10 +2,13 @@ rds-backup
 ==========
 
 This script is for backing up snapshots of AWS RDS instances. To get
-started, run
+started, fire up a virtual environment, then run
 
-    python3 -m venv env
-    . env/bin/activate
-    pip install -r requirements.txt
-    pip install --editable .
+    pip install git+https://github.com/harvard-lil/rds-backup.git
     backup --help
+
+For development, [install
+Poetry](https://python-poetry.org/docs/#installation) and run
+
+    poetry install
+    poetry run backup --help
